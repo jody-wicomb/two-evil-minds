@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>two minds / emotions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0e0f11;--surface:#16181c;--border:#222428;
+    --james:#5b9cf6;--samantha:#c084fc;
+    --text:#d1d5db;--muted:#4b5060;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;}
+  .title{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);}
+  .nav-link{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:0.1em;border:1px solid var(--border);padding:7px 14px;border-radius:4px;}
+  .nav-link:hover{color:var(--text);border-color:var(--text);}
+  .page{padding:28px;}
+  .section-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;}
+  .person-block{margin-bottom:48px;}
+  .person-name{font-family:'DM Mono',monospace;font-size:13px;margin-bottom:20px;}
+  .person-name.j{color:var(--james);}.person-name.s{color:var(--samantha);}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;}
+  .chart-label{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+  .chart-current{font-family:'DM Mono',monospace;font-size:12px;}
+  canvas{width:100%;height:60px;display:block;}
+  .dominant-section{margin-bottom:40px;}
+  .dominant-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+  .dominant-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;}
+  .dom-name{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+  .dom-timeline{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;}
+  .dom-pip{padding:3px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;white-space:nowrap;}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">two minds / emotions</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span id="turn-display" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">turn 0</span>
+    <a href="/" class="nav-link" target="_blank">Chat</a>
+    <a href="/traits" class="nav-link" target="_blank">Traits</a>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- Dominant emotion timeline -->
+  <div class="dominant-section">
+    <div class="section-title">Dominant Emotion Timeline</div>
+    <div class="dominant-grid">
+      <div class="dominant-card">
+        <div class="dom-name" style="color:var(--james);">James</div>
+        <div class="dom-timeline" id="dom-james"></div>
+      </div>
+      <div class="dominant-card">
+        <div class="dom-name" style="color:var(--samantha);">Samantha</div>
+        <div class="dom-timeline" id="dom-samantha"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-emotion charts James -->
+  <div class="person-block">
+    <div class="person-name j">James — Emotional History</div>
+    <div class="charts-grid" id="charts-james"></div>
+  </div>
+
+  <!-- Per-emotion charts Samantha -->
+  <div class="person-block">
+    <div class="person-name s">Samantha — Emotional History</div>
+    <div class="charts-grid" id="charts-samantha"></div>
+  </div>
+
+</div>
+
+<script>
+var EMO_ORDER = ["happy","sad","confused","curious","anxious","angry","aroused","guarded","tender","amused","withdrawn","hopeful","jealous","conflicted","electrified"];
+var EMO_COLORS = {
+  happy:"#34d399",sad:"#60a5fa",confused:"#fbbf24",curious:"#a78bfa",
+  anxious:"#fb923c",angry:"#f87171",aroused:"#f472b6",guarded:"#94a3b8",
+  tender:"#f9a8d4",amused:"#4ade80",withdrawn:"#6b7280",hopeful:"#67e8f9",
+  jealous:"#a3e635",conflicted:"#c084fc",electrified:"#fde68a"
+};
+var EMOJIS = {
+  happy:"😊",sad:"😔",confused:"😕",curious:"🤔",anxious:"😰",
+  angry:"😠",aroused:"🔥",guarded:"🛡️",tender:"🥺",amused:"😏",
+  withdrawn:"😶",hopeful:"✨",jealous:"😤",conflicted:"😣",electrified:"⚡"
+};
+
+var historyData = {james:{}, samantha:{}};
+var turnsData = [];
+var dominantHistory = {james:[], samantha:[]};
+var canvases = {james:{}, samantha:{}};
+
+// Init empty series
+EMO_ORDER.forEach(function(emo) {
+  historyData.james[emo] = [];
+  historyData.samantha[emo] = [];
+});
+
+function initCharts() {
+  ['james','samantha'].forEach(function(person) {
+    var container = document.getElementById('charts-'+person);
+    container.innerHTML = '';
+    EMO_ORDER.forEach(function(emo) {
+      var card = document.createElement('div');
+      card.className = 'chart-card';
+      var label = document.createElement('div');
+      label.className = 'chart-label';
+      var col = EMO_COLORS[emo];
+      label.innerHTML = '<span style="color:'+col+';">'+(EMOJIS[emo]||'')+'&nbsp;'+emo+'</span><span class="chart-current" id="cur-'+person+'-'+emo+'" style="color:'+col+';">0</span>';
+      var canvas = document.createElement('canvas');
+      canvas.id = 'canvas-'+person+'-'+emo;
+      canvas.height = 60;
+      card.appendChild(label);
+      card.appendChild(canvas);
+      container.appendChild(card);
+      canvases[person][emo] = canvas;
+    });
+  });
+}
+
+function drawCanvas(canvas, data, color) {
+  var w = canvas.offsetWidth || canvas.parentElement.offsetWidth || 280;
+  canvas.width = w;
+  canvas.height = 60;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,w,60);
+
+  if(data.length < 2) {
+    ctx.strokeStyle = color+'44';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0,55);
+    ctx.lineTo(w,55);
+    ctx.stroke();
+    return;
+  }
+
+  var max = 100;
+  var pad = 4;
+  var h = 60 - pad*2;
+
+  // Grid line at 50
+  ctx.strokeStyle = '#222428';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2,3]);
+  ctx.beginPath();
+  ctx.moveTo(0, pad + h*0.5);
+  ctx.lineTo(w, pad + h*0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Fill gradient
+  var grad = ctx.createLinearGradient(0,0,0,60);
+  grad.addColorStop(0, color+'55');
+  grad.addColorStop(1, color+'08');
+
+  ctx.beginPath();
+  data.forEach(function(v,i) {
+    var x = (i/(data.length-1))*w;
+    var y = pad + h - (v/max)*h;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  // Close fill path
+  ctx.lineTo(w, 60);
+  ctx.lineTo(0, 60);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  data.forEach(function(v,i) {
+    var x = (i/(data.length-1))*w;
+    var y = pad + h - (v/max)*h;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Last point dot
+  var lx = w;
+  var lv = data[data.length-1];
+  var ly = pad + h - (lv/max)*h;
+  ctx.beginPath();
+  ctx.arc(lx-1, ly, 3, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function redrawAll() {
+  ['james','samantha'].forEach(function(person) {
+    EMO_ORDER.forEach(function(emo) {
+      var canvas = canvases[person][emo];
+      var data = historyData[person][emo];
+      if(canvas) drawCanvas(canvas, data, EMO_COLORS[emo]);
+      var cur = document.getElementById('cur-'+person+'-'+emo);
+      if(cur) cur.textContent = data.length ? data[data.length-1] : 0;
+    });
+  });
+}
+
+function updateDominantTimeline(person, history) {
+  var container = document.getElementById('dom-'+person);
+  container.innerHTML = '';
+  // Show last 30
+  var recent = history.slice(-30);
+  // Group consecutive same emotions
+  var grouped = [];
+  recent.forEach(function(entry) {
+    if(grouped.length && grouped[grouped.length-1].emo === entry.emo) {
+      grouped[grouped.length-1].count++;
+    } else {
+      grouped.push({emo: entry.emo, turn: entry.turn, count: 1});
+    }
+  });
+  grouped.forEach(function(g) {
+    var pip = document.createElement('div');
+    pip.className = 'dom-pip';
+    var col = EMO_COLORS[g.emo] || '#4b5060';
+    pip.style.background = col+'22';
+    pip.style.border = '1px solid '+col+'55';
+    pip.style.color = col;
+    pip.textContent = (EMOJIS[g.emo]||'') + ' ' + g.emo + (g.count > 1 ? ' x'+g.count : '');
+    pip.title = 'turn '+g.turn;
+    container.appendChild(pip);
+  });
+}
+
+function processHistory(history) {
+  EMO_ORDER.forEach(function(emo) {
+    historyData.james[emo] = [];
+    historyData.samantha[emo] = [];
+  });
+  dominantHistory.james = [];
+  dominantHistory.samantha = [];
+
+  history.forEach(function(entry) {
+    var jn = entry.new && entry.new.james;
+    var sn = entry.new && entry.new.samantha;
+    if(jn) {
+      EMO_ORDER.forEach(function(emo) {
+        historyData.james[emo].push(jn[emo]||0);
+      });
+      // dominant
+      var jdom = EMO_ORDER.reduce(function(a,b){ return (jn[a]||0)>(jn[b]||0)?a:b; });
+      dominantHistory.james.push({emo:jdom, turn:entry.turn});
+    }
+    if(sn) {
+      EMO_ORDER.forEach(function(emo) {
+        historyData.samantha[emo].push(sn[emo]||0);
+      });
+      var sdom = EMO_ORDER.reduce(function(a,b){ return (sn[a]||0)>(sn[b]||0)?a:b; });
+      dominantHistory.samantha.push({emo:sdom, turn:entry.turn});
+    }
+  });
+}
+
+function appendLatest(entry) {
+  var jn = entry.new && entry.new.james;
+  var sn = entry.new && entry.new.samantha;
+  if(jn) {
+    EMO_ORDER.forEach(function(emo){ historyData.james[emo].push(jn[emo]||0); });
+    var jdom = EMO_ORDER.reduce(function(a,b){ return (jn[a]||0)>(jn[b]||0)?a:b; });
+    dominantHistory.james.push({emo:jdom, turn:entry.turn});
+  }
+  if(sn) {
+    EMO_ORDER.forEach(function(emo){ historyData.samantha[emo].push(sn[emo]||0); });
+    var sdom = EMO_ORDER.reduce(function(a,b){ return (sn[a]||0)>(sn[b]||0)?a:b; });
+    dominantHistory.samantha.push({emo:sdom, turn:entry.turn});
+  }
+}
+
+// Initial load
+fetch('/state').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('turn-display').textContent = 'turn '+d.turn;
+  if(d.emotion_history && d.emotion_history.length) {
+    processHistory(d.emotion_history);
+    redrawAll();
+    updateDominantTimeline('james', dominantHistory.james);
+    updateDominantTimeline('samantha', dominantHistory.samantha);
+  }
+});
+
+// Live stream
+var evtSource = new EventSource('/stream');
+evtSource.onmessage = function(e) {
+  var ev = JSON.parse(e.data);
+  if(ev.type === 'emotions') {
+    var entry = {
+      turn: ev.data.turn,
+      new: ev.data.emotions
+    };
+    appendLatest(entry);
+    redrawAll();
+    updateDominantTimeline('james', dominantHistory.james);
+    updateDominantTimeline('samantha', dominantHistory.samantha);
+    document.getElementById('turn-display').textContent = 'turn '+ev.data.turn;
+  }
+};
+
+// Resize handler
+window.addEventListener('resize', redrawAll);
+
+initCharts();
+</script>
+</body>
+</html>

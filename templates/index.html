@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>two minds</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0e0f11;--surface:#16181c;--border:#222428;
+    --james:#5b9cf6;--samantha:#c084fc;
+    --text:#d1d5db;--muted:#4b5060;--thinking:#1c1e24;
+    --pos:#34d399;--neg:#f87171;--nudge:#fbbf24;--res:#a78bfa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+  .title{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);}
+  .personas{display:flex;gap:24px;align-items:center;font-family:'DM Mono',monospace;font-size:11px;}
+  .pj{color:var(--james);}.ps{color:var(--samantha);}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;}
+  .dj{background:var(--james);}.ds{background:var(--samantha);}
+  .controls{display:flex;gap:10px;align-items:center;}
+  #turn-counter{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-right:4px;}
+  #trajectory{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:4px 10px;border:1px solid var(--border);border-radius:4px;}
+  button{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:7px 18px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;transition:all 0.15s;}
+  button:hover{border-color:var(--text);color:var(--text);}
+  #btn-begin{border-color:var(--james);color:var(--james);}
+  #btn-begin:hover{background:var(--james);color:var(--bg);}
+  #btn-end{border-color:var(--samantha);color:var(--samantha);}
+  #btn-end:hover{background:var(--samantha);color:var(--bg);}
+  #btn-reset{border-color:var(--neg);color:var(--neg);}
+  #btn-reset:hover{background:var(--neg);color:var(--bg);}
+  .nav-link{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:0.1em;border:1px solid var(--border);padding:7px 14px;border-radius:4px;}
+  .nav-link:hover{color:var(--text);border-color:var(--text);}
+
+  /* Environment bar */
+  #env-bar{
+    display:flex;align-items:center;gap:0;
+    height:32px;flex-shrink:0;
+    background:var(--bg);border-bottom:1px solid var(--border);
+    font-family:'DM Mono',monospace;font-size:10px;
+    overflow:hidden;position:relative;
+  }
+  .env-seg{display:flex;align-items:center;gap:8px;padding:0 16px;height:100%;border-right:1px solid var(--border);white-space:nowrap;}
+  .env-seg-label{color:var(--muted);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;}
+  .env-mini-bar{width:48px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;}
+  .env-mini-fill{height:4px;border-radius:2px;transition:width 0.5s ease;}
+  .env-seg-val{font-size:10px;}
+  #clock-seg{gap:10px;min-width:120px;}
+  #clock-time{font-size:14px;letter-spacing:0.05em;transition:color 0.5s;}
+  #clock-phase{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);}
+  /* Main layout */
+  .main{flex:1;display:flex;overflow:hidden;position:relative;}
+  #env-bar{display:flex;align-items:center;gap:0;height:32px;flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;overflow:hidden;}
+  .env-seg{display:flex;align-items:center;gap:8px;padding:0 16px;height:100%;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0;}
+  .env-seg-label{color:var(--muted);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;}
+  .env-mini-bar{width:44px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;}
+  .env-mini-fill{height:3px;border-radius:2px;transition:width 0.5s ease;}
+  .env-seg-val{font-size:10px;min-width:40px;}
+  #clock-time{font-size:13px;letter-spacing:0.05em;transition:color 0.5s;font-weight:500;}
+  #clock-phase{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);transition:color 0.5s;}
+  #clock-progress-wrap{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;min-width:60px;max-width:200px;}
+  #clock-fill{height:3px;border-radius:2px;transition:width 0.5s ease,background 0.5s ease;width:0%;}
+
+  /* Chat */
+  #chat{flex:1;overflow-y:auto;padding:32px 0 0;scroll-behavior:smooth;transition:padding-bottom 0.25s;}
+  #chat::-webkit-scrollbar{width:3px;}
+  #chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .scene-label{text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:var(--muted);padding:0 40px 36px;}
+  .message{display:flex;padding:0 32px;margin-bottom:20px;gap:12px;max-width:780px;animation:fadeUp 0.3s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .message.james{margin-left:0;}.message.samantha{margin-left:auto;flex-direction:row-reverse;}
+  .avatar{flex-shrink:0;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;margin-top:2px;}
+  .avatar.james{background:rgba(91,156,246,0.1);color:var(--james);border:1px solid rgba(91,156,246,0.2);}
+  .avatar.samantha{background:rgba(192,132,252,0.1);color:var(--samantha);border:1px solid rgba(192,132,252,0.2);}
+  .bubble{max-width:520px;}
+  .speaker-name{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;}
+  .james .speaker-name{color:var(--james);}.samantha .speaker-name{color:var(--samantha);text-align:right;}
+  .text{font-size:15px;line-height:1.65;color:var(--text);font-weight:400;background:var(--surface);padding:12px 16px;border-radius:10px;border:1px solid var(--border);}
+  .james .text{border-top-left-radius:2px;}.samantha .text{border-top-right-radius:2px;text-align:right;}
+  .ts{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px;}
+  .samantha .ts{text-align:right;}
+  .thinking-indicator{display:flex;padding:0 32px;margin-bottom:16px;gap:12px;max-width:780px;align-items:center;}
+  .thinking-indicator.samantha{margin-left:auto;flex-direction:row-reverse;}
+  .thinking-dots{display:flex;gap:4px;padding:10px 14px;background:var(--thinking);border-radius:10px;border:1px solid var(--border);}
+  .thinking-dots span{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:pulse 1.2s infinite;}
+  .thinking-dots span:nth-child(2){animation-delay:0.2s;}
+  .thinking-dots span:nth-child(3){animation-delay:0.4s;}
+  @keyframes pulse{0%,80%,100%{opacity:0.3;transform:scale(0.8);}40%{opacity:1;transform:scale(1);}}
+
+  /* Emotion panel */
+  #emo-panel{width:44px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;transition:width 0.25s ease;overflow:hidden;position:relative;}
+  #emo-panel.open{width:280px;}
+  #emo-toggle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px 0;cursor:pointer;border-bottom:1px solid var(--border);}
+  #emo-toggle:hover{background:rgba(255,255,255,0.02);}
+  .emo-toggle-pip{width:8px;height:8px;border-radius:50%;transition:background 0.4s;}
+  #emo-body{flex:1;overflow-y:auto;padding:0;opacity:0;transition:opacity 0.2s;}
+  #emo-panel.open #emo-body{opacity:1;}
+  #emo-body::-webkit-scrollbar{width:2px;}
+  #emo-body::-webkit-scrollbar-thumb{background:var(--border);}
+
+  .emo-person{padding:16px 14px;}
+  .emo-person+.emo-person{border-top:1px solid var(--border);}
+  .emo-name{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:12px;}
+  .emo-name.j{color:var(--james);}.emo-name.s{color:var(--samantha);}
+
+  /* Dominant emotion card */
+  .emo-dominant{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:14px;transition:all 0.4s;}
+  .emo-dominant-emoji{font-size:22px;line-height:1;}
+  .emo-dominant-info{}
+  .emo-dominant-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;}
+  .emo-dominant-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:400;margin-top:2px;}
+
+  /* Emotion bars */
+  .emo-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .emo-row-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);width:80px;flex-shrink:0;}
+  .emo-bar-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .emo-bar-fill{height:4px;border-radius:2px;transition:width 0.5s ease;}
+  .emo-row-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);width:24px;text-align:right;}
+  .env-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .env-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);width:60px;flex-shrink:0;}
+  .env-val{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);width:56px;text-align:right;}
+
+  /* Director panel */
+  #director{position:fixed;bottom:0;left:0;right:44px;background:var(--surface);border-top:1px solid var(--border);z-index:100;transition:height 0.25s ease, right 0.25s ease;height:38px;overflow:hidden;font-family:'DM Mono',monospace;}
+  #director.emo-open{right:280px;}
+  #dir-toggle{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:38px;cursor:pointer;user-select:none;}
+  #dir-toggle:hover{background:rgba(255,255,255,0.02);}
+  .dir-label{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;}
+  #dir-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background 0.4s;}
+  #dir-right{display:flex;gap:20px;align-items:center;font-size:10px;color:var(--muted);}
+  #dir-chevron{font-size:11px;transition:transform 0.25s;}
+  #dir-body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);height:188px;}
+  .dir-col{background:var(--bg);padding:14px 16px;overflow-y:auto;}
+  .dir-col::-webkit-scrollbar{width:2px;}
+  .dir-col::-webkit-scrollbar-thumb{background:var(--border);}
+  .dir-col-title{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .dir-row{line-height:2;font-size:11px;}
+  .dir-section-head{font-size:10px;margin-bottom:4px;margin-top:10px;}
+  .dir-inject{color:var(--text);margin-bottom:4px;line-height:1.5;font-size:11px;padding:4px 8px;border-left:2px solid var(--border);}
+  .dir-nudge-box{padding:8px 10px;background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.15);border-radius:4px;color:var(--nudge);line-height:1.6;font-size:11px;}
+  .dir-res-box{padding:6px 10px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:4px;color:var(--res);line-height:1.5;font-size:11px;margin-top:8px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">two minds</div>
+  <div class="personas">
+    <span class="pj"><span class="dot dj"></span>James / opemhermes</span>
+    <span class="ps"><span class="dot ds"></span>Samantha / heretic-thinking</span>
+  </div>
+  <div class="controls">
+    <span id="trajectory"></span>
+    <span id="turn-counter">turn 0</span>
+    <a href="/traits" class="nav-link" target="_blank">Traits</a>
+    <a href="/emotions" class="nav-link" target="_blank">Emotions</a>
+    <button id="btn-begin">Begin</button>
+    <button id="btn-end">End</button>
+    <button id="btn-reset">Reset</button>
+    <button id="btn-save">Save</button>
+  </div>
+</header>
+
+<!-- Environment / Time Bar -->
+<div id="env-bar">
+  <!-- Clock -->
+  <div class="env-seg" style="gap:10px;min-width:150px;">
+    <span id="clock-time" style="color:var(--pos);">19:00</span>
+    <span id="clock-phase">early evening</span>
+  </div>
+  <!-- Progress through the night -->
+  <div class="env-seg" style="flex:1;gap:10px;">
+    <span class="env-seg-label">night</span>
+    <div id="clock-progress-wrap"><div id="clock-fill" style="background:var(--pos);"></div></div>
+  </div>
+  <!-- James alcohol -->
+  <div class="env-seg">
+    <span class="env-seg-label" style="color:var(--james);">J</span>
+    <span class="env-seg-label">alc</span>
+    <div class="env-mini-bar"><div class="env-mini-fill" id="bar-jalc" style="background:var(--james);width:0%"></div></div>
+    <span class="env-seg-val" id="val-jalc" style="color:var(--james);">sober</span>
+  </div>
+  <!-- Samantha alcohol -->
+  <div class="env-seg">
+    <span class="env-seg-label" style="color:var(--samantha);">S</span>
+    <span class="env-seg-label">alc</span>
+    <div class="env-mini-bar"><div class="env-mini-fill" id="bar-salc" style="background:var(--samantha);width:0%"></div></div>
+    <span class="env-seg-val" id="val-salc" style="color:var(--samantha);">sober</span>
+  </div>
+  <!-- James hunger -->
+  <div class="env-seg">
+    <span class="env-seg-label" style="color:var(--james);">J</span>
+    <span class="env-seg-label">hunger</span>
+    <div class="env-mini-bar"><div class="env-mini-fill" id="bar-jhun" style="background:#fb923c;width:0%"></div></div>
+    <span class="env-seg-val" id="val-jhun" style="color:#fb923c;">fine</span>
+  </div>
+  <!-- Samantha hunger -->
+  <div class="env-seg">
+    <span class="env-seg-label" style="color:var(--samantha);">S</span>
+    <span class="env-seg-label">hunger</span>
+    <div class="env-mini-bar"><div class="env-mini-fill" id="bar-shun" style="background:#f87171;width:0%"></div></div>
+    <span class="env-seg-val" id="val-shun" style="color:#f87171;">fine</span>
+  </div>
+  <!-- Scene/Topic ticker -->
+  <div class="env-seg" style="flex:2;overflow:hidden;">
+    <span class="env-seg-label">now</span>
+    <span id="env-ticker" style="color:var(--muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">dinner party in woodstock</span>
+  </div>
+</div>
+
+<div class="main">
+  <div id="chat">
+    <div class="scene-label">A dinner party in Woodstock, Cape Town</div>
+  </div>
+
+  <!-- Emotion Panel -->
+  <div id="emo-panel">
+    <div id="emo-toggle">
+      <div class="emo-toggle-pip" id="emo-pip-j" style="background:var(--james)"></div>
+      <div class="emo-toggle-pip" id="emo-pip-s" style="background:var(--samantha)"></div>
+    </div>
+    <div id="emo-body">
+      <!-- James -->
+      <div class="emo-person">
+        <div class="emo-name j">James</div>
+        <div class="emo-dominant" id="emo-dom-james"></div>
+        <div id="emo-bars-james"></div>
+      </div>
+      <!-- Samantha -->
+      <div class="emo-person">
+        <div class="emo-name s">Samantha</div>
+        <div class="emo-dominant" id="emo-dom-samantha"></div>
+        <div id="emo-bars-samantha"></div>
+      </div>
+      <!-- Environment -->
+      <div class="emo-person">
+        <div class="emo-name" style="color:var(--nudge);">Environment</div>
+        <div id="env-panel">
+          <div class="env-row"><span class="env-label">J alcohol</span><div class="emo-bar-track"><div class="emo-bar-fill" id="env-jalc" style="background:#60a5fa;width:0%"></div></div><span class="env-val" id="env-jalc-val">sober</span></div>
+          <div class="env-row"><span class="env-label">S alcohol</span><div class="emo-bar-track"><div class="emo-bar-fill" id="env-salc" style="background:#c084fc;width:0%"></div></div><span class="env-val" id="env-salc-val">sober</span></div>
+          <div class="env-row"><span class="env-label">J hunger</span><div class="emo-bar-track"><div class="emo-bar-fill" id="env-jhun" style="background:#fb923c;width:0%"></div></div><span class="env-val" id="env-jhun-val">fine</span></div>
+          <div class="env-row"><span class="env-label">S hunger</span><div class="emo-bar-track"><div class="emo-bar-fill" id="env-shun" style="background:#f87171;width:0%"></div></div><span class="env-val" id="env-shun-val">fine</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Director Panel -->
+<div id="director">
+  <div id="dir-toggle">
+    <div class="dir-label"><span id="dir-dot"></span>Director</div>
+    <div id="dir-right">
+      <span id="dir-traj"></span>
+      <span id="dir-turn">turn 0</span>
+      <span id="dir-chevron">▲</span>
+    </div>
+  </div>
+  <div id="dir-body">
+    <div class="dir-col"><div class="dir-col-title">Therapist</div><div id="dir-therapist"><span style="color:var(--muted)">waiting...</span></div></div>
+    <div class="dir-col"><div class="dir-col-title">Active Injections</div><div id="dir-injections"><span style="color:var(--muted)">baseline</span></div></div>
+    <div class="dir-col"><div class="dir-col-title">Nudge Status</div><div id="dir-nudge"><span style="color:var(--muted)">clear</span></div></div>
+  </div>
+</div>
+
+<script>
+var evtSource = null;
+var dirOpen = false;
+var emoOpen = false;
+
+var EMOJIS = {happy:"😊",sad:"😔",confused:"😕",curious:"🤔",anxious:"😰",angry:"😠",aroused:"🔥",guarded:"🛡️",tender:"🥺",amused:"😏",withdrawn:"😶",hopeful:"✨",jealous:"😤",conflicted:"😣",electrified:"⚡"};
+var EMO_COLORS = {happy:"#34d399",sad:"#60a5fa",confused:"#fbbf24",curious:"#a78bfa",anxious:"#fb923c",angry:"#f87171",aroused:"#f472b6",guarded:"#94a3b8",tender:"#f9a8d4",amused:"#4ade80",withdrawn:"#6b7280",hopeful:"#67e8f9",jealous:"#a3e635",conflicted:"#c084fc",electrified:"#fde68a"};
+var EMO_ORDER = ["happy","sad","confused","curious","anxious","angry","aroused","guarded","tender","amused","withdrawn","hopeful","jealous","conflicted","electrified"];
+
+// Init emotion bars
+function initEmoBars(person, personId) {
+  var container = document.getElementById('emo-bars-'+person);
+  container.innerHTML = '';
+  EMO_ORDER.forEach(function(emo) {
+    var row = document.createElement('div');
+    row.className = 'emo-row';
+    row.innerHTML = '<div class="emo-row-label">'+emo+'</div>'+
+      '<div class="emo-bar-track"><div class="emo-bar-fill" id="ebar-'+person+'-'+emo+'" style="width:0%;background:'+EMO_COLORS[emo]+';opacity:0.7;"></div></div>'+
+      '<div class="emo-row-val" id="eval-'+person+'-'+emo+'">0</div>';
+    container.appendChild(row);
+  });
+}
+
+var PHASE_COLORS = {
+  early_evening:'#34d399',peak:'#60a5fa',settling:'#a78bfa',
+  late_evening:'#fbbf24',last_drinks:'#fb923c',
+  end_of_night:'#f87171',after_midnight:'#ef4444'
+};
+
+// Total night = 170 turns (19:00 to ~00:40)
+var TOTAL_NIGHT_TURNS = 170;
+
+function updatePartyTime(data) {
+  var timeEl  = document.getElementById('clock-time');
+  var phaseEl = document.getElementById('clock-phase');
+  var fillEl  = document.getElementById('clock-fill');
+  var col = PHASE_COLORS[data.phase] || 'var(--nudge)';
+
+  if(timeEl)  { timeEl.textContent = data.time; timeEl.style.color = col; }
+  if(phaseEl) { phaseEl.textContent = data.phase.replace(/_/g,' '); phaseEl.style.color = col; }
+  if(fillEl)  {
+    var pct = Math.min(100, (data.turn / TOTAL_NIGHT_TURNS) * 100);
+    fillEl.style.width = pct + '%';
+    fillEl.style.background = col;
+  }
+  // Update trajectory in header too
+  updateTrajectory(data.phase);
+}
+
+function updateEnvPanel(env) {
+  if(!env) return;
+
+  // Alcohol bars
+  var jalc = document.getElementById('bar-jalc');
+  var salc = document.getElementById('bar-salc');
+  if(jalc) jalc.style.width = (env.james_eff_alc||env.james_alcohol||0) + '%';
+  if(salc) salc.style.width = (env.samantha_eff_alc||env.samantha_alcohol||0) + '%';
+
+  var jav = document.getElementById('val-jalc');
+  var sav = document.getElementById('val-salc');
+  if(jav) jav.textContent = env.james_alc_label || 'sober';
+  if(sav) sav.textContent = env.samantha_alc_label || 'sober';
+
+  // Hunger bars
+  var jhun = document.getElementById('bar-jhun');
+  var shun = document.getElementById('bar-shun');
+  if(jhun) jhun.style.width = (env.james_hunger||0) + '%';
+  if(shun) shun.style.width = (env.samantha_hunger||0) + '%';
+
+  var jhv = document.getElementById('val-jhun');
+  var shv = document.getElementById('val-shun');
+  if(jhv) jhv.textContent = env.james_hun_label || 'fine';
+  if(shv) shv.textContent = env.samantha_hun_label || 'fine';
+
+  // Scene/topic ticker
+  var ticker = document.getElementById('env-ticker');
+  if(ticker) {
+    if(env.scene) {
+      ticker.textContent = env.scene;
+      ticker.style.color = 'var(--nudge)';
+    } else if(env.topic) {
+      ticker.textContent = 'topic: ' + env.topic;
+      ticker.style.color = 'var(--pos)';
+    } else {
+      ticker.textContent = 'dinner party in woodstock';
+      ticker.style.color = 'var(--muted)';
+    }
+  }
+
+  // Also update old emo panel bars if they exist
+  var ep_jalc = document.getElementById('env-jalc');
+  var ep_salc = document.getElementById('env-salc');
+  var ep_jhun = document.getElementById('env-jhun');
+  var ep_shun = document.getElementById('env-shun');
+  if(ep_jalc) ep_jalc.style.width = (env.james_eff_alc||env.james_alcohol||0) + '%';
+  if(ep_salc) ep_salc.style.width = (env.samantha_eff_alc||env.samantha_alcohol||0) + '%';
+  if(ep_jhun) ep_jhun.style.width = (env.james_hunger||0) + '%';
+  if(ep_shun) ep_shun.style.width = (env.samantha_hunger||0) + '%';
+  var ep_jalcv = document.getElementById('env-jalc-val');
+  var ep_salcv = document.getElementById('env-salc-val');
+  var ep_jhunv = document.getElementById('env-jhun-val');
+  var ep_shunv = document.getElementById('env-shun-val');
+  if(ep_jalcv) ep_jalcv.textContent = env.james_alc_label || 'sober';
+  if(ep_salcv) ep_salcv.textContent = env.samantha_alc_label || 'sober';
+  if(ep_jhunv) ep_jhunv.textContent = env.james_hun_label || 'fine';
+  if(ep_shunv) ep_shunv.textContent = env.samantha_hun_label || 'fine';
+}
+
+function showSceneEvent(event) {
+  // Update ticker
+  var ticker = document.getElementById('env-ticker');
+  if(ticker) { ticker.textContent = event; ticker.style.color = 'var(--nudge)'; }
+  // Also show subtle banner in chat
+  var chat = document.getElementById('chat');
+  var bar = document.createElement('div');
+  bar.style.cssText = 'margin:2px 32px 10px;padding:7px 14px;background:rgba(251,191,36,0.04);border-left:2px solid rgba(251,191,36,0.4);font-family:"DM Mono",monospace;font-size:10px;color:#fbbf24;animation:fadeUp 0.3s ease;';
+  bar.innerHTML = '<span style="opacity:0.5;margin-right:8px;">scene</span>' + event;
+  chat.appendChild(bar); chat.scrollTop = chat.scrollHeight;
+}
+
+function showTopicSeed(topic) {
+  var chat = document.getElementById('chat');
+  var bar = document.createElement('div');
+  bar.style.cssText = 'margin:4px 32px 12px;padding:8px 14px;background:rgba(52,211,153,0.04);border:1px solid rgba(52,211,153,0.15);border-radius:6px;font-family:"DM Mono",monospace;font-size:10px;color:#34d399;animation:fadeUp 0.3s ease;';
+  bar.innerHTML = '<span style="opacity:0.5;margin-right:8px;">topic nearby</span>' + topic;
+  chat.appendChild(bar); chat.scrollTop = chat.scrollHeight;
+}
+
+function showHiddenLife(data) {
+  var chat = document.getElementById('chat');
+  var bar = document.createElement('div');
+  var col = data.target === 'james' ? 'var(--james)' : 'var(--samantha)';
+  bar.style.cssText = 'margin:4px 32px 12px;padding:8px 14px;background:rgba(167,139,250,0.04);border:1px solid rgba(167,139,250,0.15);border-radius:6px;font-family:"DM Mono",monospace;font-size:10px;color:'+col+';animation:fadeUp 0.3s ease;';
+  bar.innerHTML = '<span style="opacity:0.5;margin-right:8px;">hidden life / '+data.target+'</span>' + data.fact;
+  chat.appendChild(bar); chat.scrollTop = chat.scrollHeight;
+}
+
+function updateEmoPanel(emotions, dominant) {
+  ['james','samantha'].forEach(function(person) {
+    var emos = emotions[person];
+    var dom = dominant[person];
+
+    // dominant card
+    var domEl = document.getElementById('emo-dom-'+person);
+    var col = EMO_COLORS[dom] || '#4b5060';
+    domEl.style.background = col+'18';
+    domEl.style.border = '1px solid '+col+'44';
+    domEl.innerHTML = '<div class="emo-dominant-emoji">'+( EMOJIS[dom]||'❓')+'</div>'+
+      '<div class="emo-dominant-info">'+
+        '<div class="emo-dominant-label" style="color:'+col+'">'+dom+'</div>'+
+        '<div class="emo-dominant-val" style="color:'+col+'">'+emos[dom]+'</div>'+
+      '</div>';
+
+    // pips
+    var pip = document.getElementById('emo-pip-'+person[0]);
+    if(pip) pip.style.background = col;
+
+    // bars
+    EMO_ORDER.forEach(function(emo) {
+      var bar = document.getElementById('ebar-'+person+'-'+emo);
+      var val = document.getElementById('eval-'+person+'-'+emo);
+      if(bar) { bar.style.width=(emos[emo]||0)+'%'; }
+      if(val) { val.textContent=(emos[emo]||0); val.style.color=(emos[emo]>0?EMO_COLORS[emo]:'var(--muted)'); }
+    });
+  });
+}
+
+// Panel toggle
+document.getElementById('emo-toggle').addEventListener('click', function() {
+  emoOpen = !emoOpen;
+  var panel = document.getElementById('emo-panel');
+  panel.classList.toggle('open', emoOpen);
+  document.getElementById('director').classList.toggle('emo-open', emoOpen);
+});
+
+// Director toggle
+document.getElementById('dir-toggle').addEventListener('click', function() {
+  dirOpen = !dirOpen;
+  document.getElementById('director').style.height = dirOpen ? '226px' : '38px';
+  document.getElementById('dir-chevron').style.transform = dirOpen ? 'rotate(180deg)' : '';
+  document.getElementById('chat').style.paddingBottom = dirOpen ? '244px' : '56px';
+});
+
+function flashDot(color) {
+  var dot = document.getElementById('dir-dot');
+  dot.style.background = color;
+  setTimeout(function(){dot.style.background='var(--muted)';},2500);
+}
+
+// Buttons
+document.getElementById('btn-begin').addEventListener('click', startConversation);
+document.getElementById('btn-end').addEventListener('click', stopConversation);
+document.getElementById('btn-reset').addEventListener('click', resetConversation);
+document.getElementById('btn-save').addEventListener('click', function(){window.location.href='/transcript';});
+
+function startConversation() {
+  fetch('/start',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
+    if(!d.resumed){document.getElementById('chat').innerHTML='<div class="scene-label">A dinner party in Woodstock, Cape Town</div>';}
+    updateTurn(0); connectStream();
+  });
+}
+function stopConversation() {
+  fetch('/stop',{method:'POST'});
+  if(evtSource){evtSource.close();evtSource=null;}
+  removeThinking();
+}
+function resetConversation() {
+  if(!confirm('Reset everything?')) return;
+  fetch('/reset',{method:'POST'}).then(function(){
+    document.getElementById('chat').innerHTML='<div class="scene-label">A dinner party in Woodstock, Cape Town</div>';
+    document.getElementById('turn-counter').textContent='turn 0';
+    document.getElementById('trajectory').textContent='';
+    document.getElementById('dir-turn').textContent='turn 0';
+    document.getElementById('dir-traj').textContent='';
+    document.getElementById('dir-decision').innerHTML='<span style="color:var(--muted)">waiting...</span>';
+    document.getElementById('dir-injections').innerHTML='<span style="color:var(--muted)">baseline</span>';
+    document.getElementById('dir-nudge').innerHTML='<span style="color:var(--muted)">clear</span>';
+    if(evtSource){evtSource.close();evtSource=null;}
+  });
+}
+
+function connectStream() {
+  if(evtSource) evtSource.close();
+  evtSource = new EventSource('/stream');
+  evtSource.onmessage = function(e) {
+    var ev = JSON.parse(e.data);
+    if(ev.type==='message'){removeThinking();removeNarrating();appendMessage(ev.data.speaker,ev.data.text,ev.data.turn);updateTurn(ev.data.turn);}
+    else if(ev.type==='thinking'){showThinking(ev.data.speaker);}
+    else if(ev.type==='narrating'){showNarrating();}
+    else if(ev.type==='traits'){updateTrajectory(ev.data.trajectory);dirUpdateInjections(ev.data.traits);dirUpdateNudge(ev.data.nudge,ev.data.turn);flashDot(ev.data.resonance?'#a78bfa':'#fbbf24');}
+    else if(ev.type==='therapist'){dirUpdateTherapist(ev.data);}
+    else if(ev.type==='emotions'){updateEmoPanel(ev.data.emotions,ev.data.dominant);}
+    else if(ev.type==='environment'){updateEnvPanel(ev.data);}
+    else if(ev.type==='time'){updatePartyTime(ev.data);}
+    else if(ev.type==='scene'){showSceneEvent(ev.data.event);}
+    else if(ev.type==='topic'){showTopicSeed(ev.data.topic);}
+    else if(ev.type==='hidden_life'){showHiddenLife(ev.data);}
+    else if(ev.type==='resonance'){showResonance(ev.data.event);}
+    else if(ev.type==='error'){removeThinking();appendError(ev.data.message);}
+    else if(ev.type==='stopped'){removeThinking();if(evtSource){evtSource.close();evtSource=null;}}
+  };
+}
+
+// Director columns
+var trajColors={building:'#34d399',plateau:'#fbbf24',escalating_conflict:'#f87171',breakthrough:'#a78bfa',falling:'#c084fc',rupture:'#ef4444',reconciliation:'#60a5fa',physical_moment:'#f472b6',cold_war:'#94a3b8'};
+
+function dirUpdateTherapist(data) {
+  var el = document.getElementById('dir-therapist');
+  if(!el || !data.text) return;
+  var tc = trajColors[data.trajectory] || 'var(--muted)';
+  var div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);';
+  div.innerHTML =
+    '<div style="color:var(--muted);font-size:9px;margin-bottom:6px;">turn '+data.turn+' &nbsp;<span style="color:'+tc+';">'+( data.trajectory||'')+'</span></div>'+
+    '<div style="color:var(--text);font-size:11px;line-height:1.7;">'+data.text+'</div>';
+  // Prepend so newest is at top
+  if(el.firstChild && el.firstChild.textContent === 'waiting...') el.innerHTML = '';
+  el.insertBefore(div, el.firstChild);
+  // Keep max 8 entries
+  while(el.children.length > 8) el.removeChild(el.lastChild);
+  flashDot('#a78bfa');
+}
+
+function dirUpdateInjections(traits) {
+  var el=document.getElementById('dir-injections');
+  var jR=[
+    {t:'warmth',min:30,txt:'Comfortable with her.'},
+    {t:'warmth',min:65,txt:'Something shifted. Invested.'},
+    {t:'warmth',min:85,txt:'Best conversation in years.'},
+    {t:'warmth',max:-30,txt:'Something soured.'},
+    {t:'james_vulnerability',min:40,txt:'Said more than usual.'},
+    {t:'james_vulnerability',min:70,txt:'Armour mostly gone.'},
+    {t:'attraction',min:50,txt:'Aware of something unnamed.'},
+    {t:'attraction',min:80,txt:'Knows. Scared.'},
+    {t:'hostility',min:50,txt:'Irritated. Not hiding it.'},
+    {t:'tension',min:70,txt:'Something needs saying.'},
+    {t:'physical',min:60,txt:'Aware of how close.'},
+    {t:'physical',max:-50,txt:'Wanted to step back.'}
+  ];
+  var sR=[
+    {t:'samantha_guard',max:30,txt:'Caution softened.'},
+    {t:'samantha_guard',max:10,txt:'Stopped pretending.'},
+    {t:'warmth',min:60,txt:'Genuinely at ease. Rare.'},
+    {t:'warmth',max:-30,txt:'Gone polite. Exit mode.'},
+    {t:'attraction',min:50,txt:'Noticing things.'},
+    {t:'attraction',min:80,txt:'Knows. Deciding.'},
+    {t:'hostility',min:50,txt:'Done being patient.'},
+    {t:'tension',min:70,txt:'Choosing words carefully.'},
+    {t:'physical',min:60,txt:'Physically aware.'},
+    {t:'physical',max:-50,txt:'Skin crawl.'}
+  ];
+  function active(rules,t){return rules.filter(function(r){var v=t[r.t]||0;return(r.min!==undefined&&v>=r.min)||(r.max!==undefined&&v<=r.max);});}
+  var ji=active(jR,traits),si=active(sR,traits);
+  var html='<div class="dir-section-head" style="color:var(--james);">JAMES</div>';
+  html+=ji.length?ji.map(function(r){return'<div class="dir-inject">'+r.txt+'</div>';}).join(''):'<div style="color:var(--muted);font-size:11px;">baseline</div>';
+  html+='<div class="dir-section-head" style="color:var(--samantha);">SAMANTHA</div>';
+  html+=si.length?si.map(function(r){return'<div class="dir-inject">'+r.txt+'</div>';}).join(''):'<div style="color:var(--muted);font-size:11px;">baseline</div>';
+  el.innerHTML=html;
+}
+
+function dirUpdateNudge(nudge,turn) {
+  var el=document.getElementById('dir-nudge');
+  if(!nudge){el.innerHTML='<div style="color:var(--muted);font-size:11px;">clear</div>';return;}
+  var tc=nudge.target==='james'?'var(--james)':'var(--samantha)';
+  el.innerHTML='<div style="color:var(--muted);margin-bottom:6px;font-size:10px;">fired turn '+turn+'</div>'+
+    '<div style="color:'+tc+';text-transform:uppercase;font-size:10px;margin-bottom:8px;">'+nudge.target+'</div>'+
+    '<div class="dir-nudge-box">'+nudge.instruction+'</div>'+
+    '<div style="color:var(--muted);margin-top:8px;font-size:10px;">injected next turn</div>';
+}
+
+// Chat helpers
+function appendMessage(speaker,text,turn) {
+  var chat=document.getElementById('chat');
+  var time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var msg=document.createElement('div'); msg.className='message '+speaker;
+  var av=document.createElement('div'); av.className='avatar '+speaker; av.textContent=speaker==='james'?'J':'S';
+  var bubble=document.createElement('div'); bubble.className='bubble';
+  var name=document.createElement('div'); name.className='speaker-name'; name.textContent=speaker;
+  var textEl=document.createElement('div'); textEl.className='text'; textEl.textContent=text;
+  var ts=document.createElement('div'); ts.className='ts'; ts.textContent=time;
+  bubble.appendChild(name); bubble.appendChild(textEl); bubble.appendChild(ts);
+  msg.appendChild(av); msg.appendChild(bubble);
+  chat.appendChild(msg); chat.scrollTop=chat.scrollHeight;
+}
+function showThinking(speaker) {
+  removeThinking();
+  var chat=document.getElementById('chat');
+  var ind=document.createElement('div'); ind.className='thinking-indicator '+speaker; ind.id='thinking';
+  var av=document.createElement('div'); av.className='avatar '+speaker; av.textContent=speaker==='james'?'J':'S';
+  var dots=document.createElement('div'); dots.className='thinking-dots'; dots.innerHTML='<span></span><span></span><span></span>';
+  ind.appendChild(av); ind.appendChild(dots);
+  chat.appendChild(ind); chat.scrollTop=chat.scrollHeight;
+}
+function showNarrating() {
+  removeThinking();
+  var chat=document.getElementById('chat');
+  var bar=document.createElement('div'); bar.id='narrating';
+  bar.style.cssText='text-align:center;padding:6px;font-family:"DM Mono",monospace;font-size:10px;color:var(--nudge);opacity:0.6;letter-spacing:0.15em;';
+  bar.textContent='narrator scoring...';
+  chat.appendChild(bar); chat.scrollTop=chat.scrollHeight;
+}
+function removeNarrating(){var el=document.getElementById('narrating');if(el)el.remove();}
+function showResonance(event) {
+  var chat=document.getElementById('chat');
+  var bar=document.createElement('div');
+  bar.style.cssText='margin:4px 32px 12px;padding:8px 14px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:6px;font-family:"DM Mono",monospace;font-size:10px;color:var(--res);animation:fadeUp 0.3s ease;';
+  bar.textContent='resonance: '+event;
+  chat.appendChild(bar); chat.scrollTop=chat.scrollHeight;
+}
+function removeThinking(){var el=document.getElementById('thinking');if(el)el.remove();}
+function appendError(msg) {
+  var chat=document.getElementById('chat');
+  var div=document.createElement('div');
+  div.style.cssText='text-align:center;padding:16px;font-family:monospace;font-size:12px;color:#f87171;';
+  div.textContent='Error: '+msg; chat.appendChild(div);
+}
+function updateTurn(n){document.getElementById('turn-counter').textContent='turn '+n;}
+function updateTrajectory(t) {
+  var el=document.getElementById('trajectory');
+  el.textContent=t; el.style.color=trajColors[t]||'var(--muted)';
+  el.style.borderColor=trajColors[t]?(trajColors[t]+'55'):'var(--border)';
+}
+
+// Init
+initEmoBars('james','j');
+initEmoBars('samantha','s');
+
+// Load initial state
+fetch('/state').then(function(r){return r.json();}).then(function(d){
+  if(d.emotions) updateEmoPanel(d.emotions,d.dominant);
+  if(d.environment) updateEnvPanel(d.environment);
+  updateTurn(d.turn);
+  if(d.trajectory) updateTrajectory(d.trajectory);
+  if(d.therapist_log && d.therapist_log.length) {
+    d.therapist_log.forEach(function(entry){ dirUpdateTherapist(entry); });
+  }
+});
+</script>
+</body>
+</html>

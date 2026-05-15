@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>two minds / traits</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f11; --surface: #16181c; --border: #222428;
+    --james: #5b9cf6; --samantha: #c084fc;
+    --text: #d1d5db; --muted: #4b5060;
+    --pos: #34d399; --neg: #f87171; --nudge: #fbbf24; --resonance: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .title { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  .nav-link { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-decoration: none; letter-spacing: 0.1em; border: 1px solid var(--border); padding: 7px 14px; border-radius: 4px; }
+  .nav-link:hover { color: var(--text); border-color: var(--text); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 28px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .panel-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+  .trait-row { margin-bottom: 16px; }
+  .trait-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .trait-name { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .trait-val { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 400; }
+  .trait-delta { font-family: 'DM Mono', monospace; font-size: 10px; margin-left: 8px; }
+  .bar-track { height: 6px; background: var(--border); border-radius: 3px; position: relative; overflow: visible; }
+  .bar-center { position: absolute; left: 50%; top: -1px; width: 1px; height: 8px; background: var(--muted); opacity: 0.4; }
+  .bar-fill { height: 6px; border-radius: 3px; position: absolute; transition: all 0.5s ease; }
+  .log-feed { max-height: 420px; overflow-y: auto; }
+  .log-feed::-webkit-scrollbar { width: 3px; }
+  .log-feed::-webkit-scrollbar-thumb { background: var(--border); }
+  .log-entry { padding: 10px 0; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.6; }
+  .log-turn { color: var(--muted); margin-right: 8px; }
+  .log-trajectory { color: var(--muted); font-size: 10px; margin-top: 4px; }
+  .delta-pos { color: var(--pos); }
+  .delta-neg { color: var(--neg); }
+  .delta-zero { color: var(--muted); }
+  .nudge-entry { padding: 8px 12px; background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 6px; margin-bottom: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--nudge); }
+  .resonance-entry { padding: 8px 12px; background: rgba(167,139,250,0.05); border: 1px solid rgba(167,139,250,0.15); border-radius: 6px; margin-bottom: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--resonance); }
+  .char-section { margin-bottom: 20px; }
+  .char-name { font-family: 'DM Mono', monospace; font-size: 12px; margin-bottom: 12px; }
+  .char-name.j { color: var(--james); } .char-name.s { color: var(--samantha); }
+  .eq-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .eq-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+  .eq-bar-track { width: 120px; height: 4px; background: var(--border); border-radius: 2px; }
+  .eq-bar-fill { height: 4px; border-radius: 2px; }
+  .eq-val { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); width: 30px; text-align: right; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 10px; margin: 2px; }
+  .tag-attach { background: rgba(91,156,246,0.1); color: var(--james); border: 1px solid rgba(91,156,246,0.2); }
+  .tag-shadow { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); font-size: 9px; }
+  .full-width { grid-column: 1 / -1; }
+  #traj-display { font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">two minds / traits</div>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <span id="traj-display">--</span>
+    <span id="turn-display" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">turn 0</span>
+    <a href="/" class="nav-link" target="_blank">Chat</a>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- Live trait bars -->
+  <div class="panel">
+    <div class="panel-title">Live Relationship Dynamics</div>
+    <div id="trait-bars"></div>
+  </div>
+
+  <!-- Changelog -->
+  <div class="panel">
+    <div class="panel-title">Scoring Log</div>
+    <div class="log-feed" id="log-feed"></div>
+  </div>
+
+  <!-- Nudges + Resonance -->
+  <div class="panel">
+    <div class="panel-title">Nudges</div>
+    <div id="nudge-feed"></div>
+    <div class="panel-title" style="margin-top:20px;">Resonance Events</div>
+    <div id="resonance-feed"></div>
+  </div>
+
+  <!-- Character sheets -->
+  <div class="panel">
+    <div class="panel-title">Character Architecture</div>
+    <div id="char-sheets"></div>
+  </div>
+
+  <!-- Therapist Feed - full width -->
+  <div class="panel full-width">
+    <div class="panel-title" style="color:#a78bfa;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:16px;">
+      Therapist — Psychological Arc
+      <span style="color:var(--muted);font-size:9px;margin-left:12px;text-transform:none;letter-spacing:0;">live interpretive analysis • newest at bottom</span>
+    </div>
+    <div id="therapist-feed" style="display:flex;flex-direction:column;gap:0;max-height:500px;overflow-y:auto;">
+      <div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:8px 0;">No analysis yet — start the conversation.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var TRAITS = ['warmth','james_vulnerability','samantha_guard','tension','attraction','depth','hostility','physical'];
+  var LABELS = {
+    warmth: 'warmth',
+    james_vulnerability: 'james / vulnerability',
+    samantha_guard: 'samantha / guard',
+    tension: 'tension',
+    attraction: 'attraction',
+    depth: 'depth',
+    hostility: 'hostility',
+    physical: 'physical'
+  };
+
+  var JAMES_EQ = { self_awareness:70, self_regulation:55, empathy:65, social_skill:70, introspection:80 };
+  var SAM_EQ   = { self_awareness:82, self_regulation:75, empathy:90, social_skill:72, introspection:65 };
+
+  var currentTraits = {};
+  TRAITS.forEach(function(t) { currentTraits[t] = 0; });
+
+  function initBars() {
+    var container = document.getElementById('trait-bars');
+    TRAITS.forEach(function(t) {
+      var row = document.createElement('div');
+      row.className = 'trait-row';
+      row.innerHTML =
+        '<div class="trait-label">' +
+          '<span class="trait-name">' + LABELS[t] + '</span>' +
+          '<span>' +
+            '<span class="trait-delta" id="delta-' + t + '"></span>' +
+            '<span class="trait-val" id="val-' + t + '">0</span>' +
+          '</span>' +
+        '</div>' +
+        '<div class="bar-track">' +
+          '<div class="bar-center"></div>' +
+          '<div class="bar-fill" id="bar-' + t + '" style="width:0%;left:50%;background:#4b5060;"></div>' +
+        '</div>';
+      container.appendChild(row);
+    });
+  }
+
+  function updateBars(traits, deltas) {
+    TRAITS.forEach(function(t) {
+      var val = traits[t] || 0;
+      var delta = deltas ? (deltas[t] || 0) : 0;
+      var pct = Math.abs(val) / 2;
+      var bar = document.getElementById('bar-' + t);
+      var valEl = document.getElementById('val-' + t);
+      var deltaEl = document.getElementById('delta-' + t);
+
+      if (val >= 0) {
+        bar.style.left = '50%';
+        bar.style.width = pct + '%';
+        bar.style.background = val > 60 ? '#34d399' : val > 30 ? '#60a5fa' : '#4b5060';
+      } else {
+        bar.style.width = pct + '%';
+        bar.style.left = (50 - pct) + '%';
+        bar.style.background = val < -60 ? '#ef4444' : val < -30 ? '#f97316' : '#4b5060';
+      }
+
+      valEl.textContent = (val > 0 ? '+' : '') + val;
+      valEl.style.color = val > 0 ? '#34d399' : val < 0 ? '#f87171' : '#4b5060';
+
+      if (delta !== 0) {
+        deltaEl.textContent = (delta > 0 ? '+' : '') + delta + ' ';
+        deltaEl.style.color = delta > 0 ? '#34d399' : '#f87171';
+        setTimeout(function() { deltaEl.textContent = ''; }, 3000);
+      }
+    });
+  }
+
+  function addLogEntry(entry) {
+    var feed = document.getElementById('log-feed');
+    var div = document.createElement('div');
+    div.className = 'log-entry';
+
+    var header = '<span class="log-turn">t' + entry.turn + '</span>';
+    var deltas = entry.deltas || {};
+    var parts = [];
+    Object.keys(deltas).forEach(function(k) {
+      var d = deltas[k];
+      if (d === 0) return;
+      var cls = d > 0 ? 'delta-pos' : 'delta-neg';
+      var sign = d > 0 ? '+' : '';
+      parts.push('<span class="' + cls + '">' + k.replace('_',' ').replace('_',' ') + ' ' + sign + d + '</span>');
+    });
+
+    var traj = entry.trajectory ? '<div class="log-trajectory">' + entry.trajectory + '</div>' : '';
+    div.innerHTML = header + parts.join('  ') + traj;
+    feed.insertBefore(div, feed.firstChild);
+  }
+
+  function addNudge(nudge, turn) {
+    var feed = document.getElementById('nudge-feed');
+    var div = document.createElement('div');
+    div.className = 'nudge-entry';
+    div.textContent = 't' + turn + ' -> ' + nudge.target + ': ' + nudge.instruction;
+    feed.insertBefore(div, feed.firstChild);
+  }
+
+  function addResonance(event, turn) {
+    var feed = document.getElementById('resonance-feed');
+    var div = document.createElement('div');
+    div.className = 'resonance-entry';
+    div.textContent = 't' + turn + ': ' + event;
+    feed.insertBefore(div, feed.firstChild);
+  }
+
+  function buildCharSheets() {
+    var container = document.getElementById('char-sheets');
+
+    function sheet(name, cls, eq, attachment, shadow) {
+      var div = document.createElement('div');
+      div.className = 'char-section';
+      var nameEl = '<div class="char-name ' + cls + '">' + name + '</div>';
+      var eqRows = Object.keys(eq).map(function(k) {
+        var pct = eq[k];
+        var color = cls === 'j' ? 'var(--james)' : 'var(--samantha)';
+        return '<div class="eq-row">' +
+          '<span class="eq-label">' + k.replace('_',' ') + '</span>' +
+          '<div class="eq-bar-track"><div class="eq-bar-fill" style="width:' + pct + '%;background:' + color + ';opacity:0.7;"></div></div>' +
+          '<span class="eq-val">' + pct + '</span>' +
+        '</div>';
+      }).join('');
+      var tags = '<div style="margin-top:10px;">' +
+        '<span class="tag tag-attach">' + attachment + '</span>' +
+        '<span class="tag tag-shadow">' + shadow + '</span>' +
+      '</div>';
+      div.innerHTML = nameEl + eqRows + tags;
+      container.appendChild(div);
+    }
+
+    sheet('James', 'j', JAMES_EQ, 'avoidant', 'fears intimacy');
+    sheet('Samantha', 's', SAM_EQ, 'secure', 'drawn to unavailability');
+  }
+
+  function updateTrajectory(t) {
+    var el = document.getElementById('traj-display');
+    el.textContent = t;
+    var colors = { building:'#34d399', plateau:'#fbbf24', escalating_conflict:'#f87171', breakthrough:'#a78bfa', falling:'#c084fc', rupture:'#ef4444', reconciliation:'#60a5fa', physical_moment:'#f472b6', cold_war:'#94a3b8' };
+    el.style.color = colors[t] || '#4b5060';
+  }
+
+  // Stream for live updates
+  var evtSource = new EventSource('/stream');
+  evtSource.onmessage = function(e) {
+    var ev = JSON.parse(e.data);
+    if (ev.type === 'traits') {
+      updateBars(ev.data.traits, ev.data.deltas);
+      updateTrajectory(ev.data.trajectory);
+      addLogEntry({turn: ev.data.turn, deltas: ev.data.deltas, trajectory: ev.data.trajectory});
+      if (ev.data.nudge) { addNudge(ev.data.nudge, ev.data.turn); }
+      if (ev.data.resonance) { addResonance(ev.data.resonance, ev.data.turn); }
+    }
+    if (ev.type === 'therapist') { addTherapistEntry(ev.data); }
+  };
+
+  // Therapist feed
+  var TRAJ_COLORS = {building:'#34d399',plateau:'#fbbf24',escalating_conflict:'#f87171',breakthrough:'#a78bfa',falling:'#c084fc',rupture:'#ef4444',reconciliation:'#60a5fa',physical_moment:'#f472b6',cold_war:'#94a3b8'};
+
+  function addTherapistEntry(entry) {
+    var feed = document.getElementById('therapist-feed');
+    // Clear placeholder
+    if(feed.children.length === 1 && feed.children[0].style.color) feed.innerHTML = '';
+    var tc = TRAJ_COLORS[entry.trajectory] || '#4b5060';
+    var div = document.createElement('div');
+    div.style.cssText = 'padding:14px 0;border-bottom:1px solid var(--border);';
+    div.innerHTML =
+      '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;align-items:center;">' +
+        '<span>turn ' + entry.turn + '</span>' +
+        '<span>' + entry.ts + '</span>' +
+        '<span style="color:' + tc + ';">' + (entry.trajectory||'') + '</span>' +
+      '</div>' +
+      '<div style="font-size:13px;line-height:1.75;color:#d1d5db;">' + entry.text + '</div>';
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  // Load existing therapist log on page load
+  if(typeof pollData !== 'undefined' && pollData.therapist_log) {
+    pollData.therapist_log.forEach(function(e){ addTherapistEntry(e); });
+  }
+
+  function poll() {
+    fetch('/state').then(function(r) { return r.json(); }).then(function(data) {
+      document.getElementById('turn-display').textContent = 'turn ' + data.turn;
+      updateBars(data.traits, null);
+      updateTrajectory(data.trajectory || 'building');
+
+      var feed = document.getElementById('log-feed');
+      if (feed.children.length === 0 && data.trait_history) {
+        data.trait_history.slice(-20).forEach(function(entry) { addLogEntry(entry); });
+      }
+
+      var nfeed = document.getElementById('nudge-feed');
+      if (nfeed.children.length === 0 && data.nudge_history) {
+        data.nudge_history.forEach(function(n) { addNudge(n.nudge, n.turn); });
+      }
+
+      var rfeed = document.getElementById('resonance-feed');
+      if (rfeed.children.length === 0 && data.resonance_log) {
+        data.resonance_log.forEach(function(r) { addResonance(r.event, r.turn); });
+      }
+
+      var tfeed = document.getElementById('therapist-feed');
+      if ((tfeed.children.length === 0 || (tfeed.children.length === 1 && tfeed.children[0].style.color)) && data.therapist_log) {
+        tfeed.innerHTML = '';
+        data.therapist_log.forEach(function(e){ addTherapistEntry(e); });
+      }
+    });
+  }
+
+  initBars();
+  buildCharSheets();
+  poll();
+</script>
+</body>
+</html>
