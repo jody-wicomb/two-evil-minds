@@ -48,7 +48,7 @@ Swap profiles by changing two lines in the server file.
 ## Quick start
 
 ```bash
-git clone https://github.com/yourusername/two-minds.git
+git clone https://github.com/jody-wicomb/two-minds.git
 cd two-minds
 python3 setup.py
 ```
@@ -236,5 +236,5 @@ MIT. Do what you want with it. If you build something interesting, open a PR.
 ---
 
 ## Credits
-
-Built with Claude (Anthropic) over an extended session. Cape Town, May 2026.
+Ruan Bekker for the idea
+Ai models for existing
